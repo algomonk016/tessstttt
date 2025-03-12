@@ -1,0 +1,656 @@
+/* eslint-disable */
+
+class LimeChatWhatsapp {
+  constructor({ accessToken: t, phoneNumber: e }) {
+    (this.accessToken = t),
+      (this.phoneNumber = e),
+      (this.getConfig = this.getConfig.bind(this)),
+      (this.initializeWidget = this.initializeWidget.bind(this));
+  }
+  async getConfig() {
+    try {
+      const t = await fetch(
+        `https://app-whatsapp-widget.limechat.ai/api/getWidgetConfig/${this.phoneNumber}`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${this.accessToken}` },
+        }
+      );
+      if (!t.ok) throw new Error(`Error fetching config: ${t.status}`);
+      const e = await t.json();
+      return Object.assign(this, e), e;
+    } catch (t) {
+      return console.error('Error fetching config:', t), null;
+    }
+  }
+  async initializeWidget() {
+    (await this.getConfig()) && this.renderWidget();
+  }
+  deviceCheck(t) {
+    const e = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    return (
+      ('desktop' === t && !e) ||
+      !('mobile' !== t || !e) ||
+      'both' === t ||
+      void 0
+    );
+  }
+  titleCase(t) {
+    const e = t.toLowerCase().split(' ');
+    for (let t = 0; t < e.length; t++)
+      e[t] = e[t].charAt(0).toUpperCase() + e[t].substring(1);
+    return e.join(' ');
+  }
+  renderWidget() {
+    this.deviceCheck(this.display_on) && this.renderButton();
+  }
+  pageCheck(t) {
+    let e = !1;
+    return (
+      t.forEach((t) => {
+        'homepage' == t && '/' == window.location.pathname && (e = !0),
+          'collections' == t &&
+            window.location.pathname.includes('/collections/') &&
+            (e = !0),
+          'products' == t &&
+            window.location.pathname.includes('/products/') &&
+            (e = !0),
+          'cart' == t && '/cart' == window.location.pathname && (e = !0),
+          'pages' == t &&
+            window.location.pathname.includes('/pages/') &&
+            (e = !0),
+          'checkout' == t &&
+            window.location.pathname.includes('/checkouts/') &&
+            (e = !0),
+          'blogs' == t &&
+            window.location.pathname.includes('/blogs/') &&
+            (e = !0);
+      }),
+      e
+    );
+  }
+  getParameterByName(t, e) {
+    t = t.replace(/[\[\]]/g, '\\$&');
+    const s = new RegExp(`[?&]${t}(=([^&#]*)|&|#|$)`).exec(e);
+    return s
+      ? s[2]
+        ? decodeURIComponent(s[2].replace(/\+/g, ' '))
+        : ''
+      : null;
+  }
+  appendCurrentUrl(text) {
+    if (!this.enable_utm_for_widget) return text;
+    const currentUrl = window.location.href;
+    return text ? `${text} ${currentUrl}` : currentUrl;
+  }
+  renderButton() {
+    if (this.pageCheck(this.pages_to_display) || !this.isShopify) {
+      const i = document.createElement('script');
+      i.setAttribute('src', 'https://kit.fontawesome.com/2640aa91b4.js'),
+        document.body.appendChild(i);
+      const o = document.createElement('link');
+      o.setAttribute(
+        'href',
+        'https://fonts.googleapis.com/css2?family=Lato&family=Roboto&display=swap'
+      ),
+        o.setAttribute('rel', 'stylesheet'),
+        document.body.appendChild(o);
+      const p = document.createElement('link');
+      p.setAttribute(
+        'href',
+        'https://s3.ap-south-1.amazonaws.com/cdn.limechat.ai/packs/js/whatsapp_widget/LC_whatsapp_stylesheet.css'
+      ),
+        p.setAttribute('rel', 'stylesheet'),
+        p.setAttribute('type', 'text/css'),
+        document.body.appendChild(p);
+      const a = 1e3 !== this.zIndex ? this.zIndex : 1e3,
+        l = document.createElement('div');
+      (l.className = 'WhatsAppButton__root'),
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        )
+          ? 'left' === this.position_mobile
+            ? l.setAttribute(
+                'style',
+                `position: fixed; bottom: ${this.bottom_margin_mobile}px; left: ${this.left_margin_mobile}px; z-index: ${a};`
+              )
+            : l.setAttribute(
+                'style',
+                `position: fixed; bottom: ${this.bottom_margin_mobile}px; right: ${this.right_margin_mobile}px; z-index: ${a};`
+              )
+          : 'left' === this.position_desktop
+            ? l.setAttribute(
+                'style',
+                `position: fixed; bottom: ${this.bottom_margin_desktop}px; left: ${this.left_margin_desktop}px; z-index: ${a};`
+              )
+            : l.setAttribute(
+                'style',
+                `position: fixed; bottom: ${this.bottom_margin_desktop}px; right: ${this.right_margin_desktop}px; z-index: ${a};`
+              ),
+        document.body.appendChild(l);
+      const n = document.createElement('a'),
+        h = document.createElement('a');
+      if (
+        window.location.pathname.includes('/products/') &&
+        '' !== this.pdp_prefill_text &&
+        this.isShopify &&
+        ((window.location.href.includes('variant') && !this.includeVariant) ||
+          (!window.location.href.includes('variant') && this.includeVariant) ||
+          (!window.location.href.includes('variant') && !this.includeVariant))
+      ) {
+        const i = window.location.href,
+          o = i.split('/products/');
+        let p = '';
+        if (o[1].includes('?')) {
+          p = o[1].split('?')[0];
+        } else p = o[1];
+        var t = p.replace(/\-/g, ' ').replace(/\//g, ''),
+          e = `${p}.xml`;
+        e = i.replace(p, e);
+        var s = this.titleCase(t);
+        fetch(e).then((t) => {
+          t.text()
+            .then((t) => new DOMParser().parseFromString(t, 'text/xml'))
+            .then((t) => t.querySelector('title'))
+            .then((t) => t.textContent)
+            .then((t) => {
+              t = t.replaceAll('&', '%26');
+              try {
+                const prefillText = this.appendCurrentUrl(
+                  `${this.pdp_prefill_text} ${t}`
+                );
+                n.setAttribute(
+                  'href',
+                  `https://wa.me/${this.phone}?text=${prefillText}`
+                ),
+                  h.setAttribute(
+                    'href',
+                    `https://wa.me/${this.phone}?text=${prefillText}`
+                  );
+              } catch (t) {
+                const prefillText = this.appendCurrentUrl(
+                  `${this.pdp_prefill_text} ${s}`
+                );
+                n.setAttribute(
+                  'href',
+                  `https://wa.me/${this.phone}?text=${prefillText}`
+                ),
+                  h.setAttribute(
+                    'href',
+                    `https://wa.me/${this.phone}?text=${prefillText}`
+                  );
+              }
+            });
+        });
+      } else if (
+        window.location.pathname.includes('/collections/') &&
+        !window.location.pathname.includes('/products/') &&
+        this.isShopify
+      ) {
+        const e = window.location.href.split('collections/');
+        let s = '';
+        if (e[1].includes('?')) {
+          s = e[1].split('?')[0];
+        } else s = e[1];
+        t = s.replace(/\-/g, ' ').replace(/\//g, '');
+        const i = this.titleCase(t),
+          o = 'Hey! I would like to know more about';
+        const prefillText = this.appendCurrentUrl(`${o} ${i}`);
+        n.setAttribute(
+          'href',
+          `https://wa.me/${this.phone}?text=${prefillText}`
+        ),
+          h.setAttribute(
+            'href',
+            `https://wa.me/${this.phone}?text=${prefillText}`
+          );
+      } else if (
+        window.location.pathname.includes('/products/') &&
+        window.location.href.includes('variant') &&
+        '' !== this.pdp_prefill_text &&
+        this.isShopify &&
+        this.includeVariant
+      ) {
+        const i = window.location.href,
+          o = i.split('products/');
+        let p = '';
+        if (o[1].includes('?')) {
+          p = o[1].split('?')[0];
+        } else p = o[1];
+        (t = p.replace(/\-/g, ' ').replace(/\//g, '')), (e = `${p}.xml`);
+        e = i.replace(p, e);
+        s = this.titleCase(t);
+        const a = this.getParameterByName('variant', window.location.href);
+        fetch(e)
+          .then((t) => {
+            t.text()
+              .then((t) => new DOMParser().parseFromString(t, 'text/xml'))
+              .then((t) => [
+                t.querySelectorAll('variant'),
+                t.querySelector('title'),
+              ])
+              .then((t) => {
+                for (const e of t[0])
+                  if (e.querySelector('id').textContent === a) {
+                    const s = [];
+                    let i = 1,
+                      o = e.querySelector(`option${i}`);
+                    for (; o; )
+                      o.textContent && s.push(o.textContent),
+                        i++,
+                        (o = e.querySelector(`option${i}`));
+                    return [s.join(' / '), t[1].textContent];
+                  }
+              })
+              .then((t) => {
+                try {
+                  const e = t[0],
+                    s = e.replace(/\-/g, ' ').replace(/\//g, '');
+                  const prefillText = this.appendCurrentUrl(
+                    `${this.pdp_prefill_text} ${t[1].replaceAll('&', '%26')} ${s}`
+                  );
+                  n.setAttribute(
+                    'href',
+                    `https://wa.me/${this.phone}?text=${prefillText}`
+                  ),
+                    h.setAttribute(
+                      'href',
+                      `https://wa.me/${this.phone}?text=${prefillText}`
+                    );
+                } catch (t) {
+                  const prefillText = this.appendCurrentUrl(
+                    `${this.pdp_prefill_text} ${s}`
+                  );
+                  n.setAttribute(
+                    'href',
+                    `https://wa.me/${this.phone}?text=${prefillText}`
+                  ),
+                    h.setAttribute(
+                      'href',
+                      `https://wa.me/${this.phone}?text=${prefillText}`
+                    );
+                }
+              });
+          })
+          .catch((t) => {
+            const prefillText = this.appendCurrentUrl(
+              `${this.pdp_prefill_text} ${s}`
+            );
+            n.setAttribute(
+              'href',
+              `https://wa.me/${this.phone}?text=${prefillText}`
+            ),
+              h.setAttribute(
+                'href',
+                `https://wa.me/${this.phone}?text=${prefillText}`
+              );
+          });
+      } else {
+        const prefillText = this.appendCurrentUrl(this.prefill_text);
+        n.setAttribute(
+          'href',
+          `https://wa.me/${this.phone}?text=${prefillText}`
+        ),
+          h.setAttribute(
+            'href',
+            `https://wa.me/${this.phone}?text=${prefillText}`
+          );
+      }
+      if (
+        (n.setAttribute('style', 'text-decoration: none'),
+        n.setAttribute('target', '_blank'),
+        l.appendChild(n),
+        h.setAttribute('target', '_blank'),
+        h.setAttribute('class', 'whatsapp__poweredBy'),
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        ))
+      )
+        if ('widget_text' === this.widget_type_mobile) {
+          const t = document.createElement('button');
+          t.setAttribute('class', 'landbot-whatsapp__button'),
+            t.setAttribute(
+              'style',
+              `min-width:${this.display_size_mobile}px; padding:${
+                this.display_size_mobile / 16
+              }px`
+            ),
+            n.appendChild(t);
+          const e = document.createElement('i');
+          e.setAttribute('class', 'fab fa-whatsapp'),
+            e.setAttribute('style', 'font-size: 24px; margin-right: 5px'),
+            t.appendChild(e);
+          const s = document.createElement('p');
+          s.setAttribute('style', 'margin: 0'),
+            (s.innerText = this.button_message_mobile),
+            t.appendChild(s),
+            'left' === this.position_mobile &&
+            'top' !== this.pop_up_message_position
+              ? (h.setAttribute('class', 'whatsapp__poweredBy'),
+                120 === this.display_size_mobile &&
+                  (19 === this.button_message_mobile.length ||
+                  20 === this.button_message_mobile.length
+                    ? h.setAttribute(
+                        'style',
+                        `left: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          40
+                        }px;`
+                      )
+                    : h.setAttribute(
+                        'style',
+                        `left: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          12
+                        }px;`
+                      )),
+                140 === this.display_size_mobile &&
+                  (19 === this.button_message_mobile.length ||
+                  20 === this.button_message_mobile.length
+                    ? h.setAttribute(
+                        'style',
+                        `left: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          20
+                        }px;`
+                      )
+                    : h.setAttribute(
+                        'style',
+                        `left: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          8
+                        }px;`
+                      )),
+                160 === this.display_size_mobile &&
+                  (19 === this.button_message_mobile.length ||
+                  20 === this.button_message_mobile.length
+                    ? h.setAttribute(
+                        'style',
+                        `left: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          10
+                        }px;`
+                      )
+                    : h.setAttribute(
+                        'style',
+                        `left: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          8
+                        }px;`
+                      )))
+              : 'right' === this.position_mobile &&
+                'top' !== this.pop_up_message_position &&
+                (h.setAttribute(
+                  'class',
+                  'whatsapp__poweredBy whatsapp__poweredBySideLefty'
+                ),
+                120 === this.display_size_mobile &&
+                  (19 === this.button_message_mobile.length ||
+                  20 === this.button_message_mobile.length
+                    ? h.setAttribute(
+                        'style',
+                        `right: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          40
+                        }px;`
+                      )
+                    : h.setAttribute(
+                        'style',
+                        `right: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          12
+                        }px;`
+                      )),
+                140 === this.display_size_mobile &&
+                  (19 === this.button_message_mobile.length ||
+                  20 === this.button_message_mobile.length
+                    ? h.setAttribute(
+                        'style',
+                        `right: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          20
+                        }px;`
+                      )
+                    : h.setAttribute(
+                        'style',
+                        `right: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          8
+                        }px;`
+                      )),
+                160 === this.display_size_mobile &&
+                  (19 === this.button_message_mobile.length ||
+                  20 === this.button_message_mobile.length
+                    ? h.setAttribute(
+                        'style',
+                        `left: ${
+                          this.display_size_mobile +
+                          this.button_message_mobile.length +
+                          10
+                        }px;`
+                      )
+                    : h.setAttribute(
+                        'style',
+                        `left: ${
+                          this.display_size_desktop +
+                          this.button_message_mobile.length +
+                          8
+                        }px;`
+                      ))),
+            'top' === this.pop_up_message_position &&
+            'left' === this.position_mobile
+              ? (h.setAttribute('class', 'whatsapp__poweredBy'),
+                h.setAttribute(
+                  'style',
+                  `bottom: ${this.display_size_mobile / 2.5 + 2}px; left: 0px;`
+                ))
+              : 'top' === this.pop_up_message_position &&
+                'right' === this.position_mobile &&
+                (h.setAttribute(
+                  'class',
+                  'whatsapp__poweredBy whatsapp__poweredByTopRight'
+                ),
+                h.setAttribute(
+                  'style',
+                  `bottom: ${this.display_size_mobile / 2.5 + 2}px; right: 0px;`
+                ));
+        } else {
+          const t = document.createElement('img');
+          (t.src =
+            'https://s3.ap-south-1.amazonaws.com/cdn.limechat.ai/packs/js/whatsapp_widget/media/LC_WA.png'),
+            t.setAttribute(
+              'style',
+              `width:${this.display_size_mobile}px; opacity:1`
+            ),
+            t.setAttribute('alt', 'WhatsApp Icon'),
+            n.appendChild(t),
+            'left' === this.position_mobile &&
+            'top' !== this.pop_up_message_position
+              ? (h.setAttribute('class', 'whatsapp__poweredBy'),
+                h.setAttribute(
+                  'style',
+                  `left: ${this.display_size_mobile + 12}px;`
+                ))
+              : 'right' === this.position_mobile &&
+                'top' !== this.pop_up_message_position &&
+                (h.setAttribute(
+                  'class',
+                  'whatsapp__poweredBy whatsapp__poweredBySideLefty'
+                ),
+                h.setAttribute(
+                  'style',
+                  `right: ${this.display_size_mobile + 12}px;`
+                )),
+            'top' === this.pop_up_message_position &&
+            'left' === this.position_mobile
+              ? (h.setAttribute('class', 'whatsapp__poweredBy'),
+                h.setAttribute(
+                  'style',
+                  `bottom: ${this.display_size_mobile + 14}px; left: 0px;`
+                ))
+              : 'top' === this.pop_up_message_position &&
+                'right' === this.position_mobile &&
+                (h.setAttribute(
+                  'class',
+                  'whatsapp__poweredBy whatsapp__poweredByTopRight'
+                ),
+                h.setAttribute(
+                  'style',
+                  `bottom: ${this.display_size_mobile + 14}px; right: 0px;`
+                ));
+        }
+      else if ('widget_text' === this.widget_type_desktop) {
+        const t = document.createElement('button');
+        t.setAttribute('class', 'landbot-whatsapp__button'),
+          t.setAttribute(
+            'style',
+            `min-width:${this.display_size_desktop}px; padding:${
+              this.display_size_desktop / 16
+            }px`
+          ),
+          n.appendChild(t);
+        const e = document.createElement('i');
+        e.setAttribute('class', 'fab fa-whatsapp'),
+          e.setAttribute('style', 'font-size: 24px; margin-right: 5px'),
+          t.appendChild(e);
+        const s = document.createElement('p');
+        s.setAttribute('style', 'margin: 0'),
+          (s.innerText = this.button_message_desktop),
+          t.appendChild(s),
+          'left' === this.position_desktop &&
+          'top' !== this.pop_up_message_position
+            ? (h.setAttribute('class', 'whatsapp__poweredBy'),
+              120 === this.display_size_desktop &&
+                (19 === this.button_message_desktop.length ||
+                  this.button_message_desktop.length,
+                h.setAttribute('style', 'left: 110%;')),
+              140 === this.display_size_desktop &&
+                (19 === this.button_message_desktop.length ||
+                  this.button_message_desktop.length,
+                h.setAttribute('style', 'left: 110%;')),
+              160 === this.display_size_desktop &&
+                (19 === this.button_message_desktop.length ||
+                  this.button_message_desktop.length,
+                h.setAttribute('style', 'left: 110%;')))
+            : 'right' === this.position_desktop &&
+              'top' !== this.pop_up_message_position &&
+              (h.setAttribute(
+                'class',
+                'whatsapp__poweredBy whatsapp__poweredBySideLefty'
+              ),
+              120 === this.display_size_desktop &&
+                (19 === this.button_message_desktop.length ||
+                  this.button_message_desktop.length,
+                h.setAttribute('style', 'right: 110%;')),
+              140 === this.display_size_desktop &&
+                (19 === this.button_message_desktop.length ||
+                  this.button_message_desktop.length,
+                h.setAttribute('style', 'right: 110%;')),
+              160 === this.display_size_desktop &&
+                (19 === this.button_message_desktop.length ||
+                  this.button_message_desktop.length,
+                h.setAttribute('style', 'right: 110%;'))),
+          'top' === this.pop_up_message_position &&
+          'left' === this.position_desktop
+            ? (h.setAttribute('class', 'whatsapp__poweredBy'),
+              h.setAttribute(
+                'style',
+                `bottom: ${this.display_size_desktop / 2.7 + 2}px; left: 0px;`
+              ))
+            : 'top' === this.pop_up_message_position &&
+              'right' === this.position_desktop &&
+              (h.setAttribute(
+                'class',
+                'whatsapp__poweredBy whatsapp__poweredByTopRight'
+              ),
+              h.setAttribute(
+                'style',
+                `bottom: ${this.display_size_desktop / 2.7 + 2}px; right: 0px;`
+              ));
+      } else {
+        const t = document.createElement('img');
+        (t.src =
+          'https://s3.ap-south-1.amazonaws.com/cdn.limechat.ai/packs/js/whatsapp_widget/media/LC_WA.png'),
+          t.setAttribute(
+            'style',
+            `width:${this.display_size_desktop}px; opacity:1`
+          ),
+          t.setAttribute('alt', 'WhatsApp Icon'),
+          n.appendChild(t),
+          'left' === this.position_desktop &&
+          'top' !== this.pop_up_message_position
+            ? (h.setAttribute('class', 'whatsapp__poweredBy'),
+              h.setAttribute(
+                'style',
+                `left: ${this.display_size_desktop + 12}px; bottom: ${
+                  0.2 * this.display_size_desktop
+                }px;`
+              ))
+            : 'right' === this.position_desktop &&
+              'top' !== this.pop_up_message_position &&
+              (h.setAttribute(
+                'class',
+                'whatsapp__poweredBy whatsapp__poweredBySideLefty'
+              ),
+              h.setAttribute(
+                'style',
+                `right: ${this.display_size_desktop + 12}px; bottom: ${
+                  0.2 * this.display_size_desktop
+                }px;\n                \n                `
+              )),
+          'top' === this.pop_up_message_position &&
+          'left' === this.position_desktop
+            ? (h.setAttribute('class', 'whatsapp__poweredBy'),
+              h.setAttribute(
+                'style',
+                `bottom: ${this.display_size_desktop + 12}px; left: 0px;`
+              ))
+            : 'top' === this.pop_up_message_position &&
+              'right' === this.position_desktop &&
+              (h.setAttribute(
+                'class',
+                'whatsapp__poweredBy whatsapp__poweredByTopRight'
+              ),
+              h.setAttribute(
+                'style',
+                `bottom: ${1.5 * this.display_size_desktop}px; right: 0px;`
+              ));
+      }
+      document.createElement('div');
+      const r = document.createElement('img');
+      this.pop_up_image.length > 2 &&
+        ((r.src = this.pop_up_image),
+        r.setAttribute(
+          'style',
+          'width:24px;\n            float:left;\n            height:24px;\n            margin-right: 5px;\n            margin-top:-4px;\n            border-radius: 50%;'
+        ));
+      const _ = document.createElement('img');
+      (_.src =
+        'https://s3.ap-south-1.amazonaws.com/cdn.limechat.ai/packs/js/whatsapp_widget/media/LC_close.png'),
+        _.setAttribute('class', 'closePopUp'),
+        _.removeAttribute('href'),
+        _.addEventListener(
+          'click',
+          (t) => {
+            h.remove(), t.preventDefault();
+          },
+          !1
+        ),
+        (h.innerText = this.pop_up_message_text),
+        this.show_pop_up &&
+          setTimeout(() => {
+            h.append(_), r.src.length > 2 && h.prepend(r), l.appendChild(h);
+          }, 1e3 * this.pop_up_delay);
+    }
+  }
+}
