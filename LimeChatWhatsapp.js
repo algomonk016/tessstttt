@@ -79,7 +79,6 @@ class LimeChatWhatsapp {
       : null;
   }
   appendCurrentUrl(text) {
-    if (!this.enable_utm_for_widget) return text;
     const currentUrl = window.location.href;
     return text ? `${text} ${currentUrl}` : currentUrl;
   }
